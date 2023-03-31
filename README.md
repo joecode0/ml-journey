@@ -25,4 +25,4 @@ By working through these projects, you'll gain experience in various machine lea
 
 ---------------------------------------------------------------------
 
-So, let's do it.
+So, let's do it. Note: They are fairly vague, so generally I will still be trying to create the best model I can but within a reasonable amount of time.
