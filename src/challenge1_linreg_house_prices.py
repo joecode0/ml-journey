@@ -114,6 +114,12 @@ def reclassify_non_independent_features(df):
     df['MSSubClass_SplitFoyer'] = df['HouseStyle'].apply(lambda x: 1 if x=='SFoyer' else 0) | df['MSSubClass_SplitFoyer']
     df['MSSubClass_SplitLevel'] = df['HouseStyle'].apply(lambda x: 1 if x=='SLvl' else 0) | df['MSSubClass_SplitLevel']
 
+    # Reclassify 'OverallQual' feature by converting numbers to range [0,1]
+    df['OverallQual_Val'] = df['OverallQual'].apply(lambda x: (x-1)/9)
+
+    # Reclassify 'OverallCond' feature by converting numbers to range [0,1]
+    df['OverallCond_Val'] = df['OverallCond'].apply(lambda x: (x-1)/9)
+
     # Reclassify 'Exterior1st' and 'Exterior2nd' features by OR'ing them
     df['Exterior_AsbShng'] = df['Exterior1st'].apply(lambda x: 1 if x=='AsbShng' else 0) | df['Exterior2nd'].apply(lambda x: 1 if x=='AsbShng' else 0)
     df['Exterior_AsphShn'] = df['Exterior1st'].apply(lambda x: 1 if x=='AsphShn' else 0) | df['Exterior2nd'].apply(lambda x: 1 if x=='AsphShn' else 0)
@@ -131,7 +137,93 @@ def reclassify_non_independent_features(df):
     df['Exterior_WdSdng'] = df['Exterior1st'].apply(lambda x: 1 if x=='Wd Sdng' else 0) | df['Exterior2nd'].apply(lambda x: 1 if x=='Wd Sdng' else 0)
     df['Exterior_WdShing'] = df['Exterior1st'].apply(lambda x: 1 if x=='WdShing' else 0) | df['Exterior2nd'].apply(lambda x: 1 if x=='WdShing' else 0)
 
-    
+    # Reclassify 'ExterQual' feature by converting values to numbers in the range [0,1]
+    df['ExterQual_Val'] = df['ExterQual'].apply(lambda x: 0 if x=='Po' else 0.25 if x=='Fa' else 0.5 if x=='TA' else 0.75 if x=='Gd' else 1 if x=='Ex' else 0.5)
+
+    # Reclassify 'ExterCond' feature by converting values to numbers in the range [0,1]
+    df['ExterCond_Val'] = df['ExterCond'].apply(lambda x: 0 if x=='Po' else 0.25 if x=='Fa' else 0.5 if x=='TA' else 0.75 if x=='Gd' else 1 if x=='Ex' else 0.5)
+
+    # Reclassify 'BsmtQual' feature by converting values to numbers in the range [0,1]
+    df['BsmtQual_Val'] = df['BsmtQual'].apply(lambda x: 0 if x=='NA' else 0.6 if x=='Po' else 0.7 if x=='Fa' else 0.8 if x=='TA' else 0.9 if x=='Gd' else 1 if x=='Ex' else 0)
+
+    # Reclassify 'BsmtFinType1' and 'BsmtFinType2' features by OR'ing them
+    df['BsmtFinType_Unfinished'] = df['BsmtFinType1'].apply(lambda x: 1 if x=='Unf' else 0) | df['BsmtFinType2'].apply(lambda x: 1 if x=='Unf' else 0)
+    df['BsmtFinType_LwQ'] = df['BsmtFinType1'].apply(lambda x: 1 if x=='LwQ' else 0) | df['BsmtFinType2'].apply(lambda x: 1 if x=='LwQ' else 0)
+    df['BsmtFinType_Rec'] = df['BsmtFinType1'].apply(lambda x: 1 if x=='Rec' else 0) | df['BsmtFinType2'].apply(lambda x: 1 if x=='Rec' else 0)
+    df['BsmtFinType_BLQ'] = df['BsmtFinType1'].apply(lambda x: 1 if x=='BLQ' else 0) | df['BsmtFinType2'].apply(lambda x: 1 if x=='BLQ' else 0)
+    df['BsmtFinType_ALQ'] = df['BsmtFinType1'].apply(lambda x: 1 if x=='ALQ' else 0) | df['BsmtFinType2'].apply(lambda x: 1 if x=='ALQ' else 0)
+    df['BsmtFinType_GLQ'] = df['BsmtFinType1'].apply(lambda x: 1 if x=='GLQ' else 0) | df['BsmtFinType2'].apply(lambda x: 1 if x=='GLQ' else 0)
+
+    # Reclassify 'BsmtCond', 'BsmtExposure', 'BsmtFinType1' and 'BsmtFinType2' features by one-hot-encoding them and combining all their 'no basement' options
+    # also OR 'BsmtFinType1' and 'BsmtFinType2' features
+    df['BsmtCond_Ex'] = df['BsmtCond'].apply(lambda x: 1 if x=='Ex' else 0)
+    df['BsmtCond_Gd'] = df['BsmtCond'].apply(lambda x: 1 if x=='Gd' else 0)
+    df['BsmtCond_TA'] = df['BsmtCond'].apply(lambda x: 1 if x=='TA' else 0)
+    df['BsmtCond_Fa'] = df['BsmtCond'].apply(lambda x: 1 if x=='Fa' else 0)
+    df['BsmtCond_Po'] = df['BsmtCond'].apply(lambda x: 1 if x=='Po' else 0)
+
+    df['BsmtExposure_Gd'] = df['BsmtExposure'].apply(lambda x: 1 if x=='Gd' else 0)
+    df['BsmtExposure_Av'] = df['BsmtExposure'].apply(lambda x: 1 if x=='Av' else 0)
+    df['BsmtExposure_Mn'] = df['BsmtExposure'].apply(lambda x: 1 if x=='Mn' else 0)
+    df['BsmtExposure_No'] = df['BsmtExposure'].apply(lambda x: 1 if x=='No' else 0)
+
+    df['BsmtFinType1_Unf'] = df['BsmtFinType1'].apply(lambda x: 1 if x=='Unf' else 0) | df['BsmtFinType2'].apply(lambda x: 1 if x=='Unf' else 0)
+    df['BsmtFinType1_LwQ'] = df['BsmtFinType1'].apply(lambda x: 1 if x=='LwQ' else 0) | df['BsmtFinType2'].apply(lambda x: 1 if x=='LwQ' else 0)
+    df['BsmtFinType1_Rec'] = df['BsmtFinType1'].apply(lambda x: 1 if x=='Rec' else 0) | df['BsmtFinType2'].apply(lambda x: 1 if x=='Rec' else 0)
+    df['BsmtFinType1_BLQ'] = df['BsmtFinType1'].apply(lambda x: 1 if x=='BLQ' else 0) | df['BsmtFinType2'].apply(lambda x: 1 if x=='BLQ' else 0)
+    df['BsmtFinType1_ALQ'] = df['BsmtFinType1'].apply(lambda x: 1 if x=='ALQ' else 0) | df['BsmtFinType2'].apply(lambda x: 1 if x=='ALQ' else 0)
+    df['BsmtFinType1_GLQ'] = df['BsmtFinType1'].apply(lambda x: 1 if x=='GLQ' else 0) | df['BsmtFinType2'].apply(lambda x: 1 if x=='GLQ' else 0)
+
+    df['NoBasement'] = df['BsmtCond'].apply(lambda x: 1 if x=='NA' else 0) | df['BsmtExposure'].apply(lambda x: 1 if x=='NA' else 0) | df['BsmtFinType1'].apply(lambda x: 1 if x=='NA' else 0)
+
+    # Reclassify 'HeatingQC' feature by converting values to numbers in the range [0,1]
+    df['HeatingQC_Val'] = df['HeatingQC'].apply(lambda x: 0 if x=='Po' else 0.25 if x=='Fa' else 0.5 if x=='TA' else 0.75 if x=='Gd' else 1 if x=='Ex' else 0.5)
+
+    # Reclassify 'CentralAir' feature by converting values to numbers in the range [0,1]
+    df['CentralAir_Val'] = df['CentralAir'].apply(lambda x: 0 if x=='N' else 1 if x=='Y' else 0)
+
+    # Reclassify 'KitchenQual' feature by converting values to numbers in the range [0,1]
+    df['KitchenQual_Val'] = df['KitchenQual'].apply(lambda x: 0 if x=='Po' else 0.25 if x=='Fa' else 0.5 if x=='TA' else 0.75 if x=='Gd' else 1 if x=='Ex' else 0.5)
+
+    # Reclassify 'Functional' feature by converting values to numbers in the range [0,1]
+    df['Functional_Val'] = df['Functional'].apply(lambda x: 0 if x=='Sal' else 0.143 if x=='Sev' else 0.286 if x=='Maj2' else 0.429 if x=='Maj1' else 0.571 if x=='Mod' else 0.714 if x=='Min2' else 0.857 if x=='Min1' else 1) # 1 includes last case 'Typ'
+
+    # Reclassify 'GarageType', 'GarageFinish', 'GarageQual' and 'GarageCond' features by one-hot-encoding them and combining all their 'no garage' options
+    df['GarageType_2Types'] = df['GarageType'].apply(lambda x: 1 if x=='2Types' else 0)
+    df['GarageType_Attchd'] = df['GarageType'].apply(lambda x: 1 if x=='Attchd' else 0)
+    df['GarageType_Basment'] = df['GarageType'].apply(lambda x: 1 if x=='Basment' else 0)
+    df['GarageType_BuiltIn'] = df['GarageType'].apply(lambda x: 1 if x=='BuiltIn' else 0)
+    df['GarageType_CarPort'] = df['GarageType'].apply(lambda x: 1 if x=='CarPort' else 0)
+    df['GarageType_Detchd'] = df['GarageType'].apply(lambda x: 1 if x=='Detchd' else 0)
+
+    df['GarageFinish_Fin'] = df['GarageFinish'].apply(lambda x: 1 if x=='Fin' else 0)
+    df['GarageFinish_RFn'] = df['GarageFinish'].apply(lambda x: 1 if x=='RFn' else 0)
+    df['GarageFinish_Unf'] = df['GarageFinish'].apply(lambda x: 1 if x=='Unf' else 0)
+
+    df['GarageQual_Ex'] = df['GarageQual'].apply(lambda x: 1 if x=='Ex' else 0)
+    df['GarageQual_Gd'] = df['GarageQual'].apply(lambda x: 1 if x=='Gd' else 0)
+    df['GarageQual_TA'] = df['GarageQual'].apply(lambda x: 1 if x=='TA' else 0)
+    df['GarageQual_Fa'] = df['GarageQual'].apply(lambda x: 1 if x=='Fa' else 0)
+    df['GarageQual_Po'] = df['GarageQual'].apply(lambda x: 1 if x=='Po' else 0)
+
+    df['GarageCond_Ex'] = df['GarageCond'].apply(lambda x: 1 if x=='Ex' else 0)
+    df['GarageCond_Gd'] = df['GarageCond'].apply(lambda x: 1 if x=='Gd' else 0)
+    df['GarageCond_TA'] = df['GarageCond'].apply(lambda x: 1 if x=='TA' else 0)
+    df['GarageCond_Fa'] = df['GarageCond'].apply(lambda x: 1 if x=='Fa' else 0)
+    df['GarageCond_Po'] = df['GarageCond'].apply(lambda x: 1 if x=='Po' else 0)
+
+    df['NoGarage'] = df['GarageType'].apply(lambda x: 1 if x=='NA' else 0) | df['GarageFinish'].apply(lambda x: 1 if x=='NA' else 0) | df['GarageQual'].apply(lambda x: 1 if x=='NA' else 0) | df['GarageCond'].apply(lambda x: 1 if x=='NA' else 0)
+
+    # Reclassify 'PavedDrive' feature by converting values to numbers in the range [0,1]
+    df['PavedDrive_Val'] = df['PavedDrive'].apply(lambda x: 0 if x=='N' else 0.5 if x=='P' else 1 if x=='Y' else 0)
 
     # Drop all reclassified features
+    drop_cols = ['MSSubClass','MSZoning','LotShape','LandContour','Utilities','Landslope','Condition1',
+                 'Condition2','BldgType','HouseStyle','OverallQual','OverallCond','Exterior1st','Exterior2nd',
+                 'ExterQual','ExterCond','BsmtQual','BsmtCond','BsmtExposure','BsmtFinType1','BsmtFinType2',
+                 'HeatingQC','CentralAir','KitchenQual','Functional','GarageType','GarageFinish','GarageQual',
+                 'GarageCond','PavedDrive']
+    df.drop(drop_cols, axis=1, inplace=True)
+
+    return df
     
