@@ -10,7 +10,12 @@ def pipeline1(debug=False):
 
     # Fix the features that contain non-independent values, such as categories with overlapping category values
     df = reclassify_non_independent_features(df)
+
+    df = one_hot_encode_remaining_categorical_features(df)
+
+    df = normalize_numerical_features(df)
     
+    print(df.head())
     
     return
 
@@ -227,3 +232,32 @@ def reclassify_non_independent_features(df):
 
     return df
     
+def one_hot_encode_remaining_categorical_features(df):
+    remaining_categorical_features = ['Street','Alley','LotConfig','RoofStyle','RoofMatl','MasVnrType','Foundation',
+                                      'Heating','Electrical','FireplaceQu','PoolQC','Fence','MiscFeature','SaleType',
+                                      'SaleCondition']
+    
+    # One-hot-encode remaining categorical features
+    df_one_hot_encoded = pd.get_dummies(df, columns=remaining_categorical_features)
+
+    # Drop original features
+    df.drop(remaining_categorical_features, axis=1, inplace=True)
+
+    # Merge one-hot-encoded features with the rest of the data
+    df = pd.concat([df, df_one_hot_encoded], axis=1)
+
+    return df
+
+def normalize_numerical_features(df):
+    for column in df.columns:
+        # Check if the column contains numerical data
+        if df[column].dtype in ['int64', 'float64']:
+            min_value = df[column].min()
+            max_value = df[column].max()
+
+            # Check if the values are not in the range [0, 1]
+            if min_value != 0 or max_value != 1:
+                # Apply normalization using Min-Max scaling
+                df[column] = (df[column] - min_value) / (max_value - min_value)
+
+    return df
