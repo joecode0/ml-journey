@@ -3,7 +3,7 @@ import pandas as pd
 def pipeline1(debug=False):
     
     # Read in relevant data
-    df = pd.read_csv('data/train.csv')
+    df = pd.read_csv('data/house-prices/train.csv')
 
     # Drop the useless features
     df = drop_useless_features(df)
@@ -11,16 +11,19 @@ def pipeline1(debug=False):
     # Fix the features that contain non-independent values, such as categories with overlapping category values
     df = reclassify_non_independent_features(df)
 
+    # One-hot encode the remaining categorical features
     df = one_hot_encode_remaining_categorical_features(df)
 
+    # Normalize the numerical features
     df = normalize_numerical_features(df)
     
+    # Print the head of the dataframe
     print(df.head())
     
     return
 
 def drop_useless_features(df):
-    df = df.drop(['Neighbourhood'],axis=1)
+    df = df.drop(['Neighborhood'],axis=1)
     return df
 
 def reclassify_non_independent_features(df):
@@ -59,9 +62,9 @@ def reclassify_non_independent_features(df):
     df['MSZoning_Commercial'] = df['MSZoning'].apply(lambda x: 1 if x=='C' else 0)
     df['MSZoning_FloatingVillage'] = df['MSZoning'].apply(lambda x: 1 if x=='FV' else 0)
     df['MSZoning_Industrial'] = df['MSZoning'].apply(lambda x: 1 if x=='I' else 0)
-    df['MSZoning_Residential'] = df['MSZoning'].apply(lambda x: 1 if x.isin(['FV','RH','RL','RP','RM']) else 0)
+    df['MSZoning_Residential'] = df['MSZoning'].apply(lambda x: 1 if x in ['FV','RH','RL','RP','RM'] else 0)
     df['MSZoning_DensityHigh'] = df['MSZoning'].apply(lambda x: 1 if x=='RH' else 0)
-    df['MSZoning_DensityLow'] = df['MSZoning'].apply(lambda x: 1 if x.isin(['RL','RP']) else 0)
+    df['MSZoning_DensityLow'] = df['MSZoning'].apply(lambda x: 1 if x in ['RL','RP'] else 0)
     df['MSZoning_DensityMedium'] = df['MSZoning'].apply(lambda x: 1 if x=='RM' else 0)
     df['MSZoning_Park'] = df['MSZoning'].apply(lambda x: 1 if x=='RP' else 0)
     
@@ -72,10 +75,10 @@ def reclassify_non_independent_features(df):
     df['LandContour_Flatness'] = df['LandContour'].apply(lambda x: 0 if x=="Low" else 0.33 if x=="HLS" else 0.66 if x=="Bnk" else 1)
 
     # Reclassify the 'Utilities' feature
-    df['Utilities_Electricity'] = df['Utilities'].apply(lambda x: 1 if x.isin(['AllPub','NoSewr','NoSeWa', 'ELO']) else 0)
-    df['Utilities_Gas'] = df['Utilities'].apply(lambda x: 1 if x.isin(['AllPub','NoSewr','NoSeWa']) else 0)
-    df['Utilities_Water'] = df['Utilities'].apply(lambda x: 1 if x.isin(['AllPub','NoSewr']) else 0)
-    df['Utilities_Sewer'] = df['Utilities'].apply(lambda x: 1 if x.isin(['AllPub']) else 0)
+    df['Utilities_Electricity'] = df['Utilities'].apply(lambda x: 1 if x in ['AllPub','NoSewr','NoSeWa', 'ELO'] else 0)
+    df['Utilities_Gas'] = df['Utilities'].apply(lambda x: 1 if x in ['AllPub','NoSewr','NoSeWa'] else 0)
+    df['Utilities_Water'] = df['Utilities'].apply(lambda x: 1 if x in ['AllPub','NoSewr'] else 0)
+    df['Utilities_Sewer'] = df['Utilities'].apply(lambda x: 1 if x in ['AllPub'] else 0)
 
     # Reclassify the 'LandSlope' feature
     df['LandSlope_Slope'] = df['LandSlope'].apply(lambda x: 0 if x=="Gtl" else 0.5 if x=="Mod" else 1)
@@ -223,7 +226,7 @@ def reclassify_non_independent_features(df):
     df['PavedDrive_Val'] = df['PavedDrive'].apply(lambda x: 0 if x=='N' else 0.5 if x=='P' else 1 if x=='Y' else 0)
 
     # Drop all reclassified features
-    drop_cols = ['MSSubClass','MSZoning','LotShape','LandContour','Utilities','Landslope','Condition1',
+    drop_cols = ['MSSubClass','MSZoning','LotShape','LandContour','Utilities','LandSlope','Condition1',
                  'Condition2','BldgType','HouseStyle','OverallQual','OverallCond','Exterior1st','Exterior2nd',
                  'ExterQual','ExterCond','BsmtQual','BsmtCond','BsmtExposure','BsmtFinType1','BsmtFinType2',
                  'HeatingQC','CentralAir','KitchenQual','Functional','GarageType','GarageFinish','GarageQual',
@@ -238,7 +241,7 @@ def one_hot_encode_remaining_categorical_features(df):
                                       'SaleCondition']
     
     # One-hot-encode remaining categorical features
-    df_one_hot_encoded = pd.get_dummies(df, columns=remaining_categorical_features)
+    df_one_hot_encoded = pd.get_dummies(df[remaining_categorical_features])
 
     # Drop original features
     df.drop(remaining_categorical_features, axis=1, inplace=True)
@@ -249,15 +252,16 @@ def one_hot_encode_remaining_categorical_features(df):
     return df
 
 def normalize_numerical_features(df):
-    for column in df.columns:
+    for column in [x for x in df.columns.tolist() if x != "Id"]:
         # Check if the column contains numerical data
         if df[column].dtype in ['int64', 'float64']:
             min_value = df[column].min()
             max_value = df[column].max()
 
             # Check if the values are not in the range [0, 1]
-            if min_value != 0 or max_value != 1:
+            if not ((min_value == 0) and (max_value == 1)):
                 # Apply normalization using Min-Max scaling
                 df[column] = (df[column] - min_value) / (max_value - min_value)
 
     return df
+
