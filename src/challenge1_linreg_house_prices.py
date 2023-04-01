@@ -4,29 +4,47 @@ def pipeline1(debug=False):
     
     # Read in relevant data
     df = pd.read_csv('data/house-prices/train.csv')
+    if debug:
+        print("Original Dataframe:")
+        print(df.head())
+        print('Original shape of dataframe: {}'.format(df.shape))
 
     # Drop the useless features
-    df = drop_useless_features(df)
+    df = drop_useless_features(df,debug)
 
     # Fix the features that contain non-independent values, such as categories with overlapping category values
-    df = reclassify_non_independent_features(df)
+    df = reclassify_non_independent_features(df,debug)
 
     # One-hot encode the remaining categorical features
-    df = one_hot_encode_remaining_categorical_features(df)
+    df = one_hot_encode_remaining_categorical_features(df,debug)
 
     # Normalize the numerical features
-    df = normalize_numerical_features(df)
+    df = normalize_numerical_features(df,debug)
     
     # Print the head of the dataframe
-    print(df.head())
+    if debug:
+        print("Processing complete. Here's the head of the dataframe:")
+        print(df.head())
+        print('And the shape: {}'.format(df.shape))
     
     return
 
-def drop_useless_features(df):
+def drop_useless_features(df,debug=False):
+    if debug:
+        print('Dropping useless features...')
+        print('Original count of columns: {}'.format(len(df.columns)))
+    
+    # Drop the unnecessary features
     df = df.drop(['Neighborhood'],axis=1)
+
+    if debug:
+        print('New count of columns: {}'.format(len(df.columns)))
     return df
 
-def reclassify_non_independent_features(df):
+def reclassify_non_independent_features(df,debug=False):
+    if debug:
+        print('Reclassifying non-independent features...')
+        print('Original count of columns: {}'.format(len(df.columns)))
     # Reclassify the 'MSSubClass' feature
 
     # Replace 'MSSubClass' codes with their descriptions (from data_description.txt)
@@ -233,9 +251,17 @@ def reclassify_non_independent_features(df):
                  'GarageCond','PavedDrive']
     df.drop(drop_cols, axis=1, inplace=True)
 
+    if debug:
+        print('Final count of columns: {}'.format(len(df.columns)))
+
     return df
     
-def one_hot_encode_remaining_categorical_features(df):
+def one_hot_encode_remaining_categorical_features(df, debug=False):
+
+    if debug:
+        print("One-hot-encoding remaining categorical features...")
+
+    # Get list of remaining categorical features
     remaining_categorical_features = ['Street','Alley','LotConfig','RoofStyle','RoofMatl','MasVnrType','Foundation',
                                       'Heating','Electrical','FireplaceQu','PoolQC','Fence','MiscFeature','SaleType',
                                       'SaleCondition']
@@ -249,9 +275,14 @@ def one_hot_encode_remaining_categorical_features(df):
     # Merge one-hot-encoded features with the rest of the data
     df = pd.concat([df, df_one_hot_encoded], axis=1)
 
+    if debug:
+        print('Final count of columns: {}'.format(len(df.columns)))
+
     return df
 
-def normalize_numerical_features(df):
+def normalize_numerical_features(df, debug=False):
+    if debug:
+        print("Normalizing numerical features...")
     for column in [x for x in df.columns.tolist() if x != "Id"]:
         # Check if the column contains numerical data
         if df[column].dtype in ['int64', 'float64']:
