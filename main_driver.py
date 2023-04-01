@@ -1,4 +1,8 @@
 import sys
+import warnings
+from pandas.core.common import PerformanceWarning
+
+warnings.simplefilter(action='ignore', category=PerformanceWarning)
 
 ## Main driver function
 def main(args):
