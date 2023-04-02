@@ -1,6 +1,6 @@
 import sys
 import warnings
-from pandas.core.common import PerformanceWarning
+from pandas.errors import PerformanceWarning
 
 warnings.simplefilter(action='ignore', category=PerformanceWarning)
 
