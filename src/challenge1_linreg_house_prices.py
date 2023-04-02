@@ -1,4 +1,7 @@
 import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
 
 def pipeline1(debug=False):
     
@@ -28,6 +31,27 @@ def pipeline1(debug=False):
         print('And the shape: {}'.format(df.shape))
     
     return
+
+def train_linear_regression(X_train, y_train):
+    # Create a linear regression model
+    model = LinearRegression()
+
+    # Train the model on the training data
+    model.fit(X_train, y_train)
+
+    return model
+
+def evaluate_model(model, X_val, y_val):
+    # Make predictions on the validation data
+    y_pred = model.predict(X_val)
+
+    # Calculate the mean squared error (MSE)
+    mse = mean_squared_error(y_val, y_pred)
+
+    # Calculate the coefficient of determination (R-squared)
+    r2 = r2_score(y_val, y_pred)
+
+    return mse, r2
 
 def drop_useless_features(df,debug=False):
     if debug:
