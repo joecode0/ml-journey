@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import KFold
+from sklearn.feature_selection import SelectKBest, f_regression
 
 def pipeline1(debug=False):
     
@@ -31,6 +33,48 @@ def pipeline1(debug=False):
         print('And the shape: {}'.format(df.shape))
     
     return
+
+def find_best_k_features(k_values, df, target_col):
+    # Prepare the data (assuming X and y are your feature matrix and target vector)
+    X = df[[x for x in df.columns if x != target_col]]
+    y = df[target_col]
+
+    # Create a KFold cross-validator
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+
+    # Perform cross-validated grid search for the optimal k value
+    best_k = None
+    best_mse = float('inf')
+    best_r2 = 0
+    for k in k_values:
+        mse_scores = []
+        r2_scores = []
+        for train_index, val_index in kf.split(X):
+            X_train, X_val = X.iloc[train_index], X.iloc[val_index]
+            y_train, y_val = y.iloc[train_index], y.iloc[val_index]
+
+            # Perform feature selection
+            selector = SelectKBest(f_regression, k=k)
+            X_train_selected = selector.fit_transform(X_train, y_train)
+            X_val_selected = selector.transform(X_val)
+
+            # Train and evaluate the model
+            model = train_linear_regression(X_train_selected, y_train)
+            mse, r2 = evaluate_model(model, X_val_selected, y_val)
+
+            mse_scores.append(mse)
+            r2_scores.append(r2)
+
+        avg_mse = np.mean(mse_scores)
+        avg_r2 = np.mean(r2_scores)
+
+        # Update the best k value if the current one is better
+        if avg_mse < best_mse:
+            best_k = k
+            best_mse = avg_mse
+            best_r2 = avg_r2
+
+    return best_k
 
 def train_linear_regression(X_train, y_train):
     # Create a linear regression model
