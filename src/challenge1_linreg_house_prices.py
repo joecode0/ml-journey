@@ -4,21 +4,26 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import KFold
 from sklearn.feature_selection import SelectKBest, f_regression
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
 
 def pipeline1(debug=False):
     
     # Read in relevant data
-    df = pd.read_csv('data/house-prices/train.csv')
+    train = pd.read_csv('data/house-prices/train.csv')
     if debug:
-        print("Original Dataframe:")
-        print(df.head())
-        print('Original shape of dataframe: {}'.format(df.shape))
+        print("Original Train Dataframe:")
+        print(train.head())
+        print('Original shape of Training Dataframe: {}'.format(train.shape))
 
     # Run preprocessing
-    df = run_preprocessing(df,debug)
+    if debug:
+        print('Preprocessing in progress...')
+    train = run_preprocessing(train,debug)
 
     # Perform feature selection
-    df = find_k_best_features(df, [10,100], "SalePrice",debug)
+    train = find_k_best_features(train, [10,100], "SalePrice",debug)
     
     return
 
@@ -114,6 +119,9 @@ def run_preprocessing(df,debug=False):
     # Drop the useless features
     df = drop_useless_features(df,debug)
 
+    # Fill in the missing values
+    df = fill_in_missing_values(df,debug)
+
     # Fix the features that contain non-independent values, such as categories with overlapping category values
     df = reclassify_non_independent_features(df,debug)
 
@@ -142,6 +150,44 @@ def drop_useless_features(df,debug=False):
 
     if debug:
         print('New count of columns: {}'.format(len(df.columns)))
+    return df
+
+def fill_in_missing_values(df, debug=False):
+    if debug:
+        print("Prepare imputers for missing values...")
+    
+    # Assuming your categorical columns are encoded as integers or strings
+    cat_cols_reclassify = ['MSSubClass','MSZoning','LotShape','LandContour','Utilities','LandSlope','Condition1',
+                           'Condition2','BldgType','HouseStyle','Exterior1st','Exterior2nd','ExterQual','ExterCond',
+                           'BsmtQual','BsmtCond','BsmtExposure','BsmtFinType1','BsmtFinType2','HeatingQC','CentralAir',
+                           'KitchenQual','Functional','GarageType','GarageFinish','GarageQual','GarageCond','PavedDrive']
+    cat_cols_other = ['Street','Alley','LotConfig','RoofStyle','RoofMatl','MasVnrType','Foundation',
+                            'Heating','Electrical','FireplaceQu','PoolQC','Fence','MiscFeature','SaleType',
+                            'SaleCondition']
+    categorical_columns = cat_cols_reclassify + cat_cols_other
+    numerical_columns = [x for x in df.columns.tolist() if x not in categorical_columns]
+
+    # Create an imputer for numerical columns that fills missing values with the mean of each column
+    numerical_imputer = SimpleImputer(strategy='mean')
+
+    # Create an imputer for categorical columns that fills missing values with the most frequent value of each column
+    categorical_imputer = SimpleImputer(strategy='most_frequent')
+
+    # Combine the numerical and categorical imputers using ColumnTransformer
+    if debug:
+        print("Fitting imputers for missing values...")
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', numerical_imputer, numerical_columns),
+            ('cat', categorical_imputer, categorical_columns)
+        ])
+
+    # Fit the preprocessor on your dataset
+    df_imputed = preprocessor.fit_transform(df)
+
+    # Convert the output of the preprocessor to a dataframe
+    df = pd.DataFrame(df_imputed, columns=df.columns)
+
     return df
 
 def reclassify_non_independent_features(df,debug=False):
@@ -244,10 +290,10 @@ def reclassify_non_independent_features(df,debug=False):
     df['MSSubClass_SplitLevel'] = df['HouseStyle'].apply(lambda x: 1 if x=='SLvl' else 0) | df['MSSubClass_SplitLevel']
 
     # Reclassify 'OverallQual' feature by converting numbers to range [0,1]
-    df['OverallQual_Val'] = df['OverallQual'].apply(lambda x: (x-1)/9)
+    df['OverallQual'] = df['OverallQual'].apply(lambda x: (x-1)/9)
 
     # Reclassify 'OverallCond' feature by converting numbers to range [0,1]
-    df['OverallCond_Val'] = df['OverallCond'].apply(lambda x: (x-1)/9)
+    df['OverallCond'] = df['OverallCond'].apply(lambda x: (x-1)/9)
 
     # Reclassify 'Exterior1st' and 'Exterior2nd' features by OR'ing them
     df['Exterior_AsbShng'] = df['Exterior1st'].apply(lambda x: 1 if x=='AsbShng' else 0) | df['Exterior2nd'].apply(lambda x: 1 if x=='AsbShng' else 0)
@@ -347,11 +393,10 @@ def reclassify_non_independent_features(df,debug=False):
     df['PavedDrive_Val'] = df['PavedDrive'].apply(lambda x: 0 if x=='N' else 0.5 if x=='P' else 1 if x=='Y' else 0)
 
     # Drop all reclassified features
-    drop_cols = ['MSSubClass','MSZoning','LotShape','LandContour','Utilities','LandSlope','Condition1',
-                 'Condition2','BldgType','HouseStyle','OverallQual','OverallCond','Exterior1st','Exterior2nd',
-                 'ExterQual','ExterCond','BsmtQual','BsmtCond','BsmtExposure','BsmtFinType1','BsmtFinType2',
-                 'HeatingQC','CentralAir','KitchenQual','Functional','GarageType','GarageFinish','GarageQual',
-                 'GarageCond','PavedDrive']
+    drop_cols = ['MSSubClass','MSZoning','LotShape','LandContour','Utilities','LandSlope','Condition1','Condition2',
+                 'BldgType','HouseStyle','Exterior1st','Exterior2nd','ExterQual','ExterCond','BsmtQual','BsmtCond',
+                 'BsmtExposure','BsmtFinType1','BsmtFinType2','HeatingQC','CentralAir','KitchenQual','Functional',
+                 'GarageType','GarageFinish','GarageQual','GarageCond','PavedDrive']
     df.drop(drop_cols, axis=1, inplace=True)
 
     if debug:
