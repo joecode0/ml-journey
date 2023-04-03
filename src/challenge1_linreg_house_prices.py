@@ -185,10 +185,21 @@ def fill_in_missing_values(df, debug=False):
     # Fit the preprocessor on your dataset
     df_imputed = preprocessor.fit_transform(df)
 
-    # Convert the output of the preprocessor to a dataframe
-    df = pd.DataFrame(df_imputed, columns=df.columns)
+    # Combine the column names of numerical and categorical columns
+    column_names = numerical_columns + categorical_columns
 
-    return df
+    # Create a new DataFrame with the imputed data and original column names
+    df_imputed2 = pd.DataFrame(df_imputed, columns=column_names)
+
+    # Return columns to the original order
+    df_final = df_imputed2[df.columns]
+
+    # If debug, print the head of the dataframe
+    if debug:
+        print("Imputing complete. Here's the head of the dataframe:")
+        print(df_final.head())
+
+    return df_final
 
 def reclassify_non_independent_features(df,debug=False):
     if debug:
@@ -440,7 +451,11 @@ def normalize_numerical_features(df, debug=False):
             # Check if the values are not in the range [0, 1]
             if not ((min_value == 0) and (max_value == 1)):
                 # Apply normalization using Min-Max scaling
-                df[column] = (df[column] - min_value) / (max_value - min_value)
+                if max_value != min_value:
+                    df[column] = (df[column] - min_value) / (max_value - min_value)
+                else:
+                    df[column] = 0
 
     return df
+
 
