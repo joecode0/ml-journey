@@ -14,56 +14,59 @@ def pipeline1(debug=False):
         print(df.head())
         print('Original shape of dataframe: {}'.format(df.shape))
 
-    # Drop the useless features
-    df = drop_useless_features(df,debug)
+    # Run preprocessing
+    df = run_preprocessing(df,debug)
 
-    # Fix the features that contain non-independent values, such as categories with overlapping category values
-    df = reclassify_non_independent_features(df,debug)
-
-    # One-hot encode the remaining categorical features
-    df = one_hot_encode_remaining_categorical_features(df,debug)
-
-    # Normalize the numerical features
-    df = normalize_numerical_features(df,debug)
-    
-    # Print the head of the dataframe
-    if debug:
-        print("Processing complete. Here's the head of the dataframe:")
-        print(df.head())
-        print('And the shape: {}'.format(df.shape))
+    # Perform feature selection
+    df = find_k_best_features(df, [10,100], "SalePrice",debug)
     
     return
 
-def find_best_k_features(k_values, df, target_col):
+def find_k_best_features(df, k_values, target_col, debug=False):
     # Prepare the data (assuming X and y are your feature matrix and target vector)
     X = df[[x for x in df.columns if x != target_col]]
     y = df[target_col]
 
     # Create a KFold cross-validator
-    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    if debug:
+        print('Generating KFold for cross-validation...')
+    num_splits = 2
+    kf = KFold(n_splits=num_splits, shuffle=True, random_state=42)
 
     # Perform cross-validated grid search for the optimal k value
     best_k = None
     best_mse = float('inf')
     best_r2 = 0
+    i = 1
     for k in k_values:
+        if debug:
+            print('Starting loop iteration {}...'.format(i))
         mse_scores = []
         r2_scores = []
         for train_index, val_index in kf.split(X):
+            j = 1
             X_train, X_val = X.iloc[train_index], X.iloc[val_index]
             y_train, y_val = y.iloc[train_index], y.iloc[val_index]
 
-            # Perform feature selection
+            # Perform feature selection for j-th split
+            if debug:
+                print('Performing feature selection for split {}...'.format(j))
             selector = SelectKBest(f_regression, k=k)
             X_train_selected = selector.fit_transform(X_train, y_train)
             X_val_selected = selector.transform(X_val)
 
-            # Train and evaluate the model
+            # Train and evaluate the model for j-th split
+            if debug:
+                print('Training and evaluating model for split {}...'.format(j))
             model = train_linear_regression(X_train_selected, y_train)
             mse, r2 = evaluate_model(model, X_val_selected, y_val)
 
+            # Append the scores for this split to the lists for this k value
             mse_scores.append(mse)
             r2_scores.append(r2)
+
+            # Increment the loop counter
+            j += 1
 
         avg_mse = np.mean(mse_scores)
         avg_r2 = np.mean(r2_scores)
@@ -73,6 +76,16 @@ def find_best_k_features(k_values, df, target_col):
             best_k = k
             best_mse = avg_mse
             best_r2 = avg_r2
+
+        # If debug mode, print out values for this loop iteration
+        if debug:
+            print('Loop iteration:')
+            print('k: {}, MSE: {}, R2: {}'.format(k, avg_mse, avg_r2))
+            print('Best so far:')
+            print('k: {}, MSE: {}, R2: {}'.format(best_k, best_mse, best_r2))
+
+        # Increment the loop counter
+        i+=1
 
     return best_k
 
@@ -96,6 +109,28 @@ def evaluate_model(model, X_val, y_val):
     r2 = r2_score(y_val, y_pred)
 
     return mse, r2
+
+def run_preprocessing(df,debug=False):
+    # Drop the useless features
+    df = drop_useless_features(df,debug)
+
+    # Fix the features that contain non-independent values, such as categories with overlapping category values
+    df = reclassify_non_independent_features(df,debug)
+
+    # One-hot encode the remaining categorical features
+    df = one_hot_encode_remaining_categorical_features(df,debug)
+
+    # Normalize the numerical features
+    df = normalize_numerical_features(df,debug)
+    
+    # Print the head of the dataframe
+    if debug:
+        print("Processing complete. Here's the head of the dataframe:")
+        print(df.head())
+        print('And the shape: {}'.format(df.shape))
+        print('Feature selection in progress...')
+
+    return df
 
 def drop_useless_features(df,debug=False):
     if debug:
