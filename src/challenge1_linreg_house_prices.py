@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import sys
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import KFold
@@ -7,6 +8,8 @@ from sklearn.feature_selection import SelectKBest, f_regression
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
+
+from src.utils import *
 
 def pipeline1(debug=False):
     
@@ -22,9 +25,15 @@ def pipeline1(debug=False):
         print('Preprocessing in progress...')
     train = run_preprocessing(train,debug)
 
+    # Print out feature summaries
+    if debug:
+        print('Feature summaries:')
+        feature_summary(train)
+    sys.exit(0)
+
     # Perform feature selection
-    k_values = multiples(train.shape[1]-1,10)
-    train = find_k_best_features(train, k_values, "SalePrice",debug)
+    k_values = multiples(train.shape[1]-1,1)
+    best_k = find_k_best_features(train, k_values, "SalePrice",debug)
     
     return
 
@@ -36,7 +45,7 @@ def find_k_best_features(df, k_values, target_col, debug=False):
     # Create a KFold cross-validator
     if debug:
         print('Generating KFold for cross-validation...')
-    num_splits = 2
+    num_splits = 10
     kf = KFold(n_splits=num_splits, shuffle=True, random_state=42)
 
     # Perform cross-validated grid search for the optimal k value
@@ -88,9 +97,9 @@ def find_k_best_features(df, k_values, target_col, debug=False):
         # If debug mode, print out values for this loop iteration
         if debug:
             print('Loop iteration values:')
-            print('k: {}, MSE: {}, R2: {}'.format(k, avg_mse, avg_r2))
+            print('k: {}, MSE: {}, R2: {}'.format(k, round(avg_mse,5), round(avg_r2,5)))
             print('Best values so far:')
-            print('k: {}, MSE: {}, R2: {}'.format(best_k, best_mse, best_r2))
+            print('k: {}, MSE: {}, R2: {}'.format(best_k, round(best_mse,5), round(best_r2,5)))
 
         # Increment the loop counter
         i+=1
@@ -152,7 +161,7 @@ def drop_useless_features(df,debug=False):
         print('Original count of columns: {}'.format(len(df.columns)))
     
     # Drop the unnecessary features
-    df = df.drop(['Neighborhood'],axis=1)
+    df = df.drop(['Id','Neighborhood'],axis=1)
 
     if debug:
         print('New count of columns: {}'.format(len(df.columns)))
@@ -463,9 +472,14 @@ def remove_constant_features(df, debug=False):
 def normalize_numerical_features(df, debug=False):
     if debug:
         print("Normalizing numerical features...")
-    for column in [x for x in df.columns.tolist() if x != "Id"]:
+
+    # Convert object columns to numeric
+    df = convert_columns_to_float64(df)
+
+    # Iterate over all columns in the DataFrame and normalize numerical features
+    for column in [x for x in df.columns.tolist()]:
         # Check if the column contains numerical data
-        if df[column].dtype in ['int64', 'float64']:
+        if df[column].dtype in ['float64']:
             min_value = df[column].min()
             max_value = df[column].max()
 
