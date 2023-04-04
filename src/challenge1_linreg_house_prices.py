@@ -23,7 +23,8 @@ def pipeline1(debug=False):
     train = run_preprocessing(train,debug)
 
     # Perform feature selection
-    train = find_k_best_features(train, [10,100], "SalePrice",debug)
+    k_values = multiples(train.shape[1]-1,10)
+    train = find_k_best_features(train, k_values, "SalePrice",debug)
     
     return
 
@@ -48,8 +49,8 @@ def find_k_best_features(df, k_values, target_col, debug=False):
             print('Starting loop iteration {}...'.format(i))
         mse_scores = []
         r2_scores = []
+
         for train_index, val_index in kf.split(X):
-            j = 1
             X_train, X_val = X.iloc[train_index], X.iloc[val_index]
             y_train, y_val = y.iloc[train_index], y.iloc[val_index]
 
@@ -61,25 +62,19 @@ def find_k_best_features(df, k_values, target_col, debug=False):
             X_train = X_train.astype(np.float64)
             y_train = y_train.astype(np.float64)
 
-            # Perform feature selection for j-th split
-            if debug:
-                print('Performing feature selection for split {}...'.format(j))
-            selector = SelectKBest(f_regression, k=k)
-            X_train_selected = selector.fit_transform(X_train, y_train)
-            X_val_selected = selector.transform(X_val)
+            if k < len(X_train.columns):
+                # Perform feature selection for j-th split
+                selector = SelectKBest(f_regression, k=k)
+                X_train_selected = selector.fit_transform(X_train, y_train)
+                X_val_selected = selector.transform(X_val)
 
-            # Train and evaluate the model for j-th split
-            if debug:
-                print('Training and evaluating model for split {}...'.format(j))
-            model = train_linear_regression(X_train_selected, y_train)
-            mse, r2 = evaluate_model(model, X_val_selected, y_val)
+                # Train and evaluate the model for j-th split
+                model = train_linear_regression(X_train_selected, y_train)
+                mse, r2 = evaluate_model(model, X_val_selected, y_val)
 
-            # Append the scores for this split to the lists for this k value
-            mse_scores.append(mse)
-            r2_scores.append(r2)
-
-            # Increment the loop counter
-            j += 1
+                # Append the scores for this split to the lists for this k value
+                mse_scores.append(mse)
+                r2_scores.append(r2)
 
         avg_mse = np.mean(mse_scores)
         avg_r2 = np.mean(r2_scores)
@@ -92,9 +87,9 @@ def find_k_best_features(df, k_values, target_col, debug=False):
 
         # If debug mode, print out values for this loop iteration
         if debug:
-            print('Loop iteration:')
+            print('Loop iteration values:')
             print('k: {}, MSE: {}, R2: {}'.format(k, avg_mse, avg_r2))
-            print('Best so far:')
+            print('Best values so far:')
             print('k: {}, MSE: {}, R2: {}'.format(best_k, best_mse, best_r2))
 
         # Increment the loop counter
@@ -484,4 +479,8 @@ def normalize_numerical_features(df, debug=False):
 
     return df
 
-
+def multiples(n,m):
+    multiples = []
+    for i in range(m, n, m):
+        multiples.append(i)
+    return multiples
