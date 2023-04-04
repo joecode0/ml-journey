@@ -53,6 +53,14 @@ def find_k_best_features(df, k_values, target_col, debug=False):
             X_train, X_val = X.iloc[train_index], X.iloc[val_index]
             y_train, y_val = y.iloc[train_index], y.iloc[val_index]
 
+            # Remove constant columns within the split
+            X_train = remove_constant_features(X_train)
+            X_val = X_val[X_train.columns]  # Keep only the same columns as in X_train
+
+            # Convert X_train and y_train to float64
+            X_train = X_train.astype(np.float64)
+            y_train = y_train.astype(np.float64)
+
             # Perform feature selection for j-th split
             if debug:
                 print('Performing feature selection for split {}...'.format(j))
@@ -127,6 +135,9 @@ def run_preprocessing(df,debug=False):
 
     # One-hot encode the remaining categorical features
     df = one_hot_encode_remaining_categorical_features(df,debug)
+
+    # Remove constant features
+    df = remove_constant_features(df,debug)
 
     # Normalize the numerical features
     df = normalize_numerical_features(df,debug)
@@ -438,6 +449,21 @@ def one_hot_encode_remaining_categorical_features(df, debug=False):
         print('Final count of columns: {}'.format(len(df.columns)))
 
     return df
+
+def remove_constant_features(df, debug=False):
+
+    # Find constant columns
+    if debug:
+        print("Removing constant features...")
+    constant_columns = []
+    for column in df.columns:
+        if df[column].nunique() == 1:
+            constant_columns.append(column)
+
+    # Drop the constant columns from the DataFrame
+    df_no_constants = df.drop(columns=constant_columns)
+    
+    return df_no_constants
 
 def normalize_numerical_features(df, debug=False):
     if debug:
