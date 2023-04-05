@@ -23,7 +23,7 @@ def pipeline1(debug=False):
     # Run preprocessing
     if debug:
         print('Preprocessing in progress...')
-    train = run_preprocessing(train,debug)
+    train = run_preprocessing(train,"SalePrice",debug)
 
     # Print out feature summaries
     if debug:
@@ -33,7 +33,7 @@ def pipeline1(debug=False):
     # Print out most correlated features
     if debug:
         print('Most correlated features:')
-        find_highly_correlated_features(train,0.7)
+        find_highly_correlated_features(train,"SalePrice",0.7)
     sys.exit(0)
 
     # Perform feature selection
@@ -132,7 +132,7 @@ def evaluate_model(model, X_val, y_val):
 
     return mse, r2
 
-def run_preprocessing(df,debug=False):
+def run_preprocessing(df,target_col,debug=False):
     # Drop the useless features
     df = drop_useless_features(df,debug)
 
@@ -149,7 +149,7 @@ def run_preprocessing(df,debug=False):
     df = remove_constant_features(df,debug)
 
     # Normalize the numerical features
-    df = normalize_numerical_features(df,debug)
+    df = normalize_numerical_features(df,target_col,debug)
     
     # Print the head of the dataframe
     if debug:
@@ -474,7 +474,7 @@ def remove_constant_features(df, debug=False):
     
     return df_no_constants
 
-def normalize_numerical_features(df, debug=False):
+def normalize_numerical_features(df, target_col, debug=False):
     if debug:
         print("Normalizing numerical features...")
 
@@ -482,7 +482,7 @@ def normalize_numerical_features(df, debug=False):
     df = convert_columns_to_float64(df)
 
     # Iterate over all columns in the DataFrame and normalize numerical features
-    for column in [x for x in df.columns.tolist()]:
+    for column in [x for x in df.columns.tolist() if x != target_col]:
         # Check if the column contains numerical data
         if df[column].dtype in ['float64']:
             min_value = df[column].min()

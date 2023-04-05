@@ -5,26 +5,36 @@ from scipy.stats import spearmanr
 # Universal variables
 data_folder = 'data'
 
-def find_highly_correlated_features(df, threshold=0.7):
-    # Calculate the Spearman's rho correlation matrix
-    corr_matrix, _ = spearmanr(df)
+def find_highly_correlated_features(df, target_col, threshold=0.7):
+    # Calculate Spearman's rho for all pairs of features, and target variable correlations
+    spearman_corr = df.corr(method='spearman')
+    target_corr = spearman_corr[target_col]
 
-    # Create a DataFrame for easier indexing
-    corr_df = pd.DataFrame(corr_matrix, columns=df.columns, index=df.columns)
+    # Create a list to store the relevant information
+    correlations = []
 
-    # Find feature pairs with correlation higher than the threshold
-    correlated_pairs = []
-    for i, col1 in enumerate(df.columns):
-        for j, col2 in enumerate(df.columns):
-            if i < j and abs(corr_df.loc[col1, col2]) > threshold:
-                correlated_pairs.append((col1, col2, corr_df.loc[col1, col2]))
+    # Loop through the correlation matrix and collect the relevant information
+    for i in range(len(spearman_corr)):
+        for j in range(i + 1, len(spearman_corr)):
+            if abs(spearman_corr.iloc[i, j]) > threshold:
+                feature1 = spearman_corr.columns[i]
+                feature2 = spearman_corr.columns[j]
+                if feature1 == target_col or feature2 == target_col:
+                    continue
+                corr = spearman_corr.iloc[i, j]
+                var1 = df[feature1].var()
+                var2 = df[feature2].var()
+                target_corr1 = target_corr[feature1]
+                target_corr2 = target_corr[feature2]
+                correlations.append((feature1, feature2, corr, var1, var2, target_corr1, target_corr2))
 
-    # Sort the correlated pairs by absolute correlation coefficient value
-    correlated_pairs.sort(key=lambda x: abs(x[2]), reverse=True)
+    # Sort the list by absolute correlation coefficient
+    correlations.sort(key=lambda x: abs(x[2]), reverse=True)
 
-    # Print out the correlated feature pairs
-    for col1, col2, corr in correlated_pairs:
-        print(f"{col1} | {col2}: {corr:.2f}")
+    # Print the sorted correlations
+    for corr in correlations:
+        print(f"({corr[0]}, {corr[1]}): Spearman's rho: {corr[2]:.2f}, Variances: {corr[3]:.2f}, {corr[4]:.2f}, Target correlations: {corr[5]:.2f}, {corr[6]:.2f}")
+
 
 def feature_summary(df):
     for column in df.columns:
