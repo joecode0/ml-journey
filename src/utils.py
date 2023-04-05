@@ -5,7 +5,7 @@ from scipy.stats import spearmanr
 # Universal variables
 data_folder = 'data'
 
-def find_highly_correlated_features(df, target_col, threshold=0.7):
+def find_highly_correlated_features(df, target_col, threshold=0.7, debug=False):
     # Calculate Spearman's rho for all pairs of features, and target variable correlations
     spearman_corr = df.corr(method='spearman')
     target_corr = spearman_corr[target_col]
@@ -32,8 +32,36 @@ def find_highly_correlated_features(df, target_col, threshold=0.7):
     correlations.sort(key=lambda x: abs(x[2]), reverse=True)
 
     # Print the sorted correlations
+    if debug:
+        for corr in correlations:
+            print(f"({corr[0]}, {corr[1]}): Rho:{corr[2]:.2f} || Var:{corr[3]:.2f}|{corr[4]:.2f} || Target cor:{corr[5]:.2f}|{corr[6]:.2f}")
+
+    return correlations
+
+def select_features_to_remove(correlations, debug=False):
+    # Select the features to remove based on correlation with target variable, variance then name length
+    features_to_remove = set()
     for corr in correlations:
-        print(f"({corr[0]}, {corr[1]}): Spearman's rho: {corr[2]:.2f}, Variances: {corr[3]:.2f}, {corr[4]:.2f}, Target correlations: {corr[5]:.2f}, {corr[6]:.2f}")
+        feature1, feature2 = corr[0], corr[1]
+        if feature1 in features_to_remove or feature2 in features_to_remove:
+            continue
+
+        if corr[5] > corr[6]:
+            features_to_remove.add(feature2)
+        elif corr[5] < corr[6]:
+            features_to_remove.add(feature1)
+        else:
+            if corr[3] > corr[4]:
+                features_to_remove.add(feature2)
+            elif corr[3] < corr[4]:
+                features_to_remove.add(feature1)
+            else:
+                features_to_remove.add(max(feature1, feature2, key=len))
+
+    if debug:
+        print("Number of features to remove: {}".format(len(features_to_remove)))
+        print("Features to remove: {}".format(features_to_remove))
+    return list(features_to_remove)
 
 
 def feature_summary(df):

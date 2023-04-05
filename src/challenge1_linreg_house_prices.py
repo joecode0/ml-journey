@@ -33,7 +33,13 @@ def pipeline1(debug=False):
     # Print out most correlated features
     if debug:
         print('Most correlated features:')
-        find_highly_correlated_features(train,"SalePrice",0.7)
+        correlations = find_highly_correlated_features(train,"SalePrice",0.8,debug)
+    
+    # Select features to remove
+    if debug:
+        print('Selecting features to remove...')
+        features_to_remove = select_features_to_remove(correlations,debug)
+
     sys.exit(0)
 
     # Perform feature selection
