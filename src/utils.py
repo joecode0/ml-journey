@@ -1,8 +1,30 @@
 import pandas as pd
 import numpy as np
+from scipy.stats import spearmanr
 
 # Universal variables
 data_folder = 'data'
+
+def find_highly_correlated_features(df, threshold=0.7):
+    # Calculate the Spearman's rho correlation matrix
+    corr_matrix, _ = spearmanr(df)
+
+    # Create a DataFrame for easier indexing
+    corr_df = pd.DataFrame(corr_matrix, columns=df.columns, index=df.columns)
+
+    # Find feature pairs with correlation higher than the threshold
+    correlated_pairs = []
+    for i, col1 in enumerate(df.columns):
+        for j, col2 in enumerate(df.columns):
+            if i < j and abs(corr_df.loc[col1, col2]) > threshold:
+                correlated_pairs.append((col1, col2, corr_df.loc[col1, col2]))
+
+    # Sort the correlated pairs by absolute correlation coefficient value
+    correlated_pairs.sort(key=lambda x: abs(x[2]), reverse=True)
+
+    # Print out the correlated feature pairs
+    for col1, col2, corr in correlated_pairs:
+        print(f"{col1} | {col2}: {corr:.2f}")
 
 def feature_summary(df):
     for column in df.columns:

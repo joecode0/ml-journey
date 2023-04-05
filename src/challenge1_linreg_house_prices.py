@@ -29,6 +29,11 @@ def pipeline1(debug=False):
     if debug:
         print('Feature summaries:')
         feature_summary(train)
+
+    # Print out most correlated features
+    if debug:
+        print('Most correlated features:')
+        find_highly_correlated_features(train,0.7)
     sys.exit(0)
 
     # Perform feature selection
