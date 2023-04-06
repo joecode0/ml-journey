@@ -28,17 +28,17 @@ def pipeline1(debug=False):
     # Print out feature summaries
     if debug:
         print('Feature summaries:')
-        feature_summary(train)
+    feature_summary(train)
 
     # Print out most correlated features
     if debug:
         print('Most correlated features:')
-        correlations = find_highly_correlated_features(train,"SalePrice",0.8,debug)
+    correlations = find_highly_correlated_features(train,"SalePrice",0.8,debug)
     
     # Select features to remove
     if debug:
         print('Selecting features to remove...')
-        features_to_remove = select_features_to_remove(correlations,debug)
+    features_to_remove = select_features_to_remove(correlations,debug)
 
     sys.exit(0)
 
@@ -47,6 +47,46 @@ def pipeline1(debug=False):
     best_k = find_k_best_features(train, k_values, "SalePrice",debug)
     
     return
+
+def cross_validate_linear_regression(df, target_col, num_splits=10, random_state=42, debug=False):
+    # Prepare the data (assuming X and y are your feature matrix and target vector)
+    X = df[[x for x in df.columns if x != target_col]]
+    y = df[target_col]
+
+    # Create a KFold cross-validator
+    if debug:
+        print('Generating KFold for cross-validation...')
+    kf = KFold(n_splits=num_splits, shuffle=True, random_state=random_state)
+
+    mse_scores = []
+    r2_scores = []
+
+    for train_index, val_index in kf.split(X):
+        X_train, X_val = X.iloc[train_index], X.iloc[val_index]
+        y_train, y_val = y.iloc[train_index], y.iloc[val_index]
+
+        # Remove constant columns within the split
+        X_train = remove_constant_features(X_train)
+        X_val = X_val[X_train.columns]  # Keep only the same columns as in X_train
+
+        # Convert X_train and y_train to float64
+        X_train = X_train.astype(np.float64)
+        y_train = y_train.astype(np.float64)
+
+        # Train the linear regression model
+        model = train_linear_regression(X_train, y_train)
+
+        # Make predictions and evaluate the model
+        mse, r2 = evaluate_model(model, X_val, y_val)
+
+        # Append the scores for this split to the lists
+        mse_scores.append(mse)
+        r2_scores.append(r2)
+
+    avg_mse = np.mean(mse_scores)
+    avg_r2 = np.mean(r2_scores)
+
+    return avg_mse, avg_r2
 
 def find_k_best_features(df, k_values, target_col, debug=False):
     # Prepare the data (assuming X and y are your feature matrix and target vector)
