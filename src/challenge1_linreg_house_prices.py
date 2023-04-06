@@ -62,10 +62,15 @@ def grid_search_correlation_threshold(df, target_col, threshold_values, debug=Fa
         features_to_remove = select_features_to_remove(correlations)
 
         # Remove selected features
-        processed_df = df.drop(features_to_remove, axis=1)
+        processed_df = df.copy().drop(features_to_remove, axis=1)
+
+        if debug:
+            print(f"Processed dataframe shape: {processed_df.shape}")
+            print("Processed dataframe:")
+            print(processed_df.head())
 
         # Evaluate the model using cross-validation
-        mse, r2 = cross_validate_linear_regression(processed_df, target_col)
+        mse, r2 = cross_validate_linear_regression(processed_df, target_col,debug=True)
 
         num_features_removed = len(features_to_remove)
 
@@ -78,9 +83,10 @@ def grid_search_correlation_threshold(df, target_col, threshold_values, debug=Fa
             best_mse = mse
             best_r2 = r2
             best_processed_df = processed_df
+            best_features_removed = num_features_removed
 
     if debug:
-        print(f"Best threshold: {best_threshold} | Best MSE: {best_mse:.2f} | Best R2: {best_r2:.2f}")
+        print(f"Best threshold: {best_threshold} | Best MSE: {best_mse:.2f} | Best R2: {best_r2:.2f} | Best Features removed: {best_features_removed}")
 
     # Train the best model on the entire processed dataset
     X_best = best_processed_df[[x for x in best_processed_df.columns if x != target_col]]
@@ -114,11 +120,21 @@ def cross_validate_linear_regression(df, target_col, num_splits=10, random_state
         X_train = X_train.astype(np.float64)
         y_train = y_train.astype(np.float64)
 
+        # Normalize the target variable
+        y_train_normalized = (y_train - y_train.min()) / (y_train.max() - y_train.min())
+        y_val_normalized = (y_val - y_train.min()) / (y_train.max() - y_train.min())
+
         # Train the linear regression model
-        model = train_linear_regression(X_train, y_train)
+        model = train_linear_regression(X_train, y_train_normalized)
 
         # Make predictions and evaluate the model
-        mse, r2 = evaluate_model(model, X_val, y_val)
+        y_pred_normalized = model.predict(X_val)
+
+        # Reverse the normalization for the predictions
+        y_pred = y_pred_normalized * (y_train.max() - y_train.min()) + y_train.min()
+
+        # Evaluate the model
+        mse, r2 = evaluate_model(y_val, y_pred, debug)
 
         # Append the scores for this split to the lists
         mse_scores.append(mse)
@@ -203,13 +219,16 @@ def train_linear_regression(X_train, y_train):
     model = LinearRegression()
 
     # Train the model on the training data
-    model.fit(X_train, y_train)
+    model = model.fit(X_train, y_train)
 
     return model
 
-def evaluate_model(model, X_val, y_val):
-    # Make predictions on the validation data
-    y_pred = model.predict(X_val)
+def evaluate_model(y_val, y_pred, debug=False):
+    if debug:
+        print("First 5 predictions:")
+        print(y_pred[:5])
+        print("First 5 actual values:")
+        print(y_val[:5])
 
     # Calculate the mean squared error (MSE)
     mse = mean_squared_error(y_val, y_pred)
