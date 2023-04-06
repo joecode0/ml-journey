@@ -30,15 +30,11 @@ def pipeline1(debug=False):
         print('Feature summaries:')
     feature_summary(train)
 
-    # Print out most correlated features
+    # Perform grid search of range of correlation thresholds
     if debug:
-        print('Most correlated features:')
-    correlations = find_highly_correlated_features(train,"SalePrice",0.8,debug)
-    
-    # Select features to remove
-    if debug:
-        print('Selecting features to remove...')
-    features_to_remove = select_features_to_remove(correlations,debug)
+        print('Grid search in progress...')
+    threshold_values = np.arange(0.7, 0.75, 0.05)
+    t, model, df_processed = grid_search_correlation_threshold(train, "SalePrice", threshold_values, debug)
 
     sys.exit(0)
 
@@ -47,6 +43,51 @@ def pipeline1(debug=False):
     best_k = find_k_best_features(train, k_values, "SalePrice",debug)
     
     return
+
+def grid_search_correlation_threshold(df, target_col, threshold_values, debug=False):
+    best_threshold = None
+    best_mse = float('inf')
+    best_r2 = 0
+    best_model = None
+    best_processed_df = None
+
+    for threshold in threshold_values:
+        if debug:
+            print(f"Processing threshold: {threshold}")
+
+        # Find highly correlated features based on the current threshold
+        correlations = find_highly_correlated_features(df, target_col, threshold)
+
+        # Select features to remove
+        features_to_remove = select_features_to_remove(correlations)
+
+        # Remove selected features
+        processed_df = df.drop(features_to_remove, axis=1)
+
+        # Evaluate the model using cross-validation
+        mse, r2 = cross_validate_linear_regression(processed_df, target_col)
+
+        num_features_removed = len(features_to_remove)
+
+        if debug:
+            print(f"Threshold: {threshold} | MSE: {mse:.2f} | R2: {r2:.2f} | Features removed: {num_features_removed}")
+
+        # Update the best threshold, model, and processed dataset if the current one is better
+        if mse < best_mse:
+            best_threshold = threshold
+            best_mse = mse
+            best_r2 = r2
+            best_processed_df = processed_df
+
+    if debug:
+        print(f"Best threshold: {best_threshold} | Best MSE: {best_mse:.2f} | Best R2: {best_r2:.2f}")
+
+    # Train the best model on the entire processed dataset
+    X_best = best_processed_df[[x for x in best_processed_df.columns if x != target_col]]
+    y_best = best_processed_df[target_col]
+    best_model = LinearRegression().fit(X_best, y_best)
+
+    return best_threshold, best_model, best_processed_df
 
 def cross_validate_linear_regression(df, target_col, num_splits=10, random_state=42, debug=False):
     # Prepare the data (assuming X and y are your feature matrix and target vector)
