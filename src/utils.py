@@ -5,6 +5,37 @@ from scipy.stats import spearmanr
 # Universal variables
 data_folder = 'data'
 
+def remove_outliers_iqr(df, factor=1.5, debug=False):
+    numeric_columns = df.select_dtypes(include=[np.number]).columns
+    non_numeric_columns = df.select_dtypes(exclude=[np.number]).columns
+    
+    if debug and len(non_numeric_columns) > 0:
+        print(f"Non-numeric columns: {', '.join(non_numeric_columns)}")
+
+    df_numeric = df[numeric_columns]
+
+    Q1 = df_numeric.quantile(0.25)
+    Q3 = df_numeric.quantile(0.75)
+    IQR = Q3 - Q1
+
+    lower_bound = Q1 - factor * IQR
+    upper_bound = Q3 + factor * IQR
+
+     # Only consider columns with IQR greater than min_iqr for outlier removal
+    is_outlier = ((df_numeric < lower_bound) | (df_numeric > upper_bound)) & (IQR > 0.001)
+    df_filtered = df[~is_outlier.any(axis=1)]
+
+    if debug:
+        num_outliers = is_outlier.any(axis=1).sum()
+        print(f"Removed {num_outliers} outliers:")
+        
+        for col in numeric_columns:
+            num_outliers_col = is_outlier[col].sum()
+            if num_outliers_col > 0:
+                print(f"  - {col}: {num_outliers_col} outliers (below {lower_bound[col]:.2f} or above {upper_bound[col]:.2f})")
+
+    return df_filtered
+
 def find_highly_correlated_features(df, target_col, threshold=0.7, debug=False):
     # Calculate Spearman's rho for all pairs of features, and target variable correlations
     spearman_corr = df.corr(method='spearman')

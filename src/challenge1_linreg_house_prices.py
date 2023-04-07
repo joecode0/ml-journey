@@ -254,6 +254,9 @@ def run_preprocessing(df,target_col,debug=False):
     # Remove constant features
     df = remove_constant_features(df,debug)
 
+    # Remove outliers from the dataset using the IQR method
+    df = remove_outliers_iqr(df,factor=1.5,debug=debug)
+
     # Normalize the numerical features
     df = normalize_numerical_features(df,target_col,debug)
     
@@ -601,6 +604,9 @@ def normalize_numerical_features(df, target_col, debug=False):
                     df[column] = (df[column] - min_value) / (max_value - min_value)
                 else:
                     df[column] = 0
+
+    # Convert object columns to numeric
+    df = convert_columns_to_float64(df)
 
     return df
 
