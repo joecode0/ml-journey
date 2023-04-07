@@ -238,7 +238,7 @@ def evaluate_model(y_val, y_pred, debug=False):
 
     return mse, r2
 
-def run_preprocessing(df,target_col,debug=False):
+def run_preprocessing_old(df,target_col,debug=False):
     # Drop the useless features
     df = drop_useless_features(df,debug)
 
@@ -260,6 +260,49 @@ def run_preprocessing(df,target_col,debug=False):
     # Normalize the numerical features
     df = normalize_numerical_features(df,target_col,debug)
     
+    # Print the head of the dataframe
+    if debug:
+        print("Processing complete. Here's the head of the dataframe:")
+        print(df.head())
+        print('And the shape: {}'.format(df.shape))
+        print('Feature selection in progress...')
+
+    return df
+
+def run_preprocessing(df, target_col, debug=False):
+    # Drop the useless features
+    df = drop_useless_features(df, debug)
+
+    # Fill in the missing values
+    df = fill_in_missing_values(df, debug)
+
+    # Fix the features that contain non-independent values, such as categories with overlapping category values
+    df = reclassify_non_independent_features(df, debug)
+
+    # One-hot encode the remaining categorical features
+    df = one_hot_encode_remaining_categorical_features(df, debug)
+
+    # Remove constant features
+    df = remove_constant_features(df, debug)
+
+    # Remove outliers from the dataset using the IQR method
+    df = remove_outliers_iqr(df, factor=3, debug=debug)
+
+    # Identify and apply transformations to reduce skewness
+    skewed_columns = identify_skewed_columns(df, threshold=0.5, debug=debug)  # Adjust threshold if needed
+    df = apply_transformations(df, skewed_columns, debug)
+
+    # Identify and standardize high variance features
+    high_variance_columns = identify_high_variance_columns(df, threshold=1.0, debug=debug)  # Adjust threshold if needed
+    df = standardize_features(df, high_variance_columns, debug)
+
+    # Identify and target encode sparse categorical features
+    sparse_categorical_columns = identify_sparse_categorical_columns(df, threshold=0.9, debug=debug)  # Adjust threshold if needed
+    df = target_encode_features(df, target_col, sparse_categorical_columns, debug)
+
+    # Normalize the numerical features
+    df = normalize_numerical_features(df, target_col, debug)
+
     # Print the head of the dataframe
     if debug:
         print("Processing complete. Here's the head of the dataframe:")

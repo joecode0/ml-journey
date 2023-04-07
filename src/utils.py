@@ -1,9 +1,70 @@
 import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
+from sklearn.preprocessing import StandardScaler
+import category_encoders as ce
 
 # Universal variables
 data_folder = 'data'
+
+def identify_skewed_columns(df, threshold=0.5, debug=False):
+    if debug:
+        print(f"Identifying skewed columns with threshold {threshold}")
+    skewed_columns = []
+    for col in df.columns:
+        if df[col].dtype == 'float64':
+            skewness = df[col].skew()
+            if abs(skewness) > threshold:
+                skewed_columns.append(col)
+    return skewed_columns
+
+def identify_high_variance_columns(df, threshold=1.0, debug=False):
+    if debug:
+        print(f"Identifying high variance columns with threshold {threshold}")
+    high_variance_columns = []
+    for col in df.columns:
+        if df[col].dtype == 'float64':
+            mean = df[col].mean()
+            std_dev = df[col].std()
+            if std_dev / mean > threshold:
+                high_variance_columns.append(col)
+    return high_variance_columns
+
+def identify_sparse_categorical_columns(df, threshold=0.9, debug=False):
+    if debug:
+        print(f"Identifying sparse categorical columns with threshold {threshold}")
+    sparse_categorical_columns = []
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            value_counts = df[col].value_counts(normalize=True)
+            if value_counts.max() > threshold:
+                sparse_categorical_columns.append(col)
+    return sparse_categorical_columns
+
+def target_encode_features(df, target_col, columns, debug=False):
+    if debug:
+        print(f"Target encoding {', '.join(columns)}")
+    encoder = ce.TargetEncoder(cols=columns)
+    df = df.join(encoder.fit_transform(df[columns], df[target_col]))
+    df.drop(columns, axis=1, inplace=True)
+    return df
+
+def standardize_features(df, columns, debug=False):
+    if debug:
+        print(f"Standardizing {', '.join(columns)}")
+    scaler = StandardScaler()
+    df[columns] = scaler.fit_transform(df[columns])
+    return df
+
+def apply_transformations(df, columns, transformation='log', debug=False):
+    if debug:
+        print(f"Applying {transformation} transformation to {', '.join(columns)}")
+    for column in columns:
+        if transformation == 'log':
+            df[column] = np.log1p(df[column])
+        elif transformation == 'sqrt':
+            df[column] = np.sqrt(df[column])
+    return df
 
 def remove_outliers_iqr(df, factor=1.5, debug=False):
     numeric_columns = df.select_dtypes(include=[np.number]).columns
