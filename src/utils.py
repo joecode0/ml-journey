@@ -12,6 +12,9 @@ def fill_in_missing_values(df, debug=False):
     if debug:
         print("Prepare imputers for missing values...")
 
+    original_columns = list(df.columns)
+    print(df.head())
+
     # Identify numerical and categorical columns
     numerical_columns = df.select_dtypes(include='number').columns.tolist()
     categorical_columns = df.select_dtypes(exclude='number').columns.tolist()
@@ -34,20 +37,40 @@ def fill_in_missing_values(df, debug=False):
     # Fit the preprocessor on your dataset
     df_imputed = preprocessor.fit_transform(df)
 
-    # Extract column names
-    column_names = numerical_columns + categorical_columns
-    if preprocessor.remainder == 'passthrough':
-        column_names += [x for x in df.columns if x not in column_names]
+    # Get the names of the transformed features in the same order as they appear in the input dataframe
+    column_names = []
+    for transformer_in_columns in preprocessor.transformers_[:-1]: # excluding the last "remainder" transformer
+        # Get list of input column names for this transformer
+        transformer_num_cols = transformer_in_columns[2]
+        # Get names of the transformed features
+        transformer = transformer_in_columns[1]
+        if hasattr(transformer,'get_feature_names'):
+            # This transformer uses get_feature_names
+            names = transformer.get_feature_names(transformer_num_cols)
+        else:
+            # This transformer doesn't use get_feature_names
+            names = transformer_num_cols
+        # Add to column names
+        column_names += names
 
-    # Create a new DataFrame with the imputed data and original column names
-    df_imputed2 = pd.DataFrame(df_imputed, columns=column_names, index=df.index)
+    # Add the remaining columns (i.e. the ones that weren't transformed)
+    column_names += preprocessor.transformers_[-1][2]
+
+    # Create a new DataFrame with the imputed data and original column names, and fix index
+    df_imputed2 = pd.DataFrame(df_imputed, columns=column_names).astype(df.dtypes.to_dict())
+
+    # Select desired columns based on their names
+    original_columns = df.columns.tolist()
+    df_final = df_imputed2.loc[:, original_columns]
 
     # If debug, print the head of the dataframe
     if debug:
         print("Imputing complete. Here's the head of the dataframe:")
-        print(df_imputed2.head())
+        print(df_final.head())
+        print('And the shape: {}'.format(df.shape))
 
-    return df_imputed2
+    return df_final
+
 
 def identify_skewed_columns(df, threshold=0.5, debug=False):
     if debug:
@@ -201,25 +224,24 @@ def select_features_to_remove(correlations, debug=False):
 def feature_summary(df):
     for column in df.columns:
         name = column
-        min_value = df[column].min()
-        max_value = df[column].max()
-        mean = np.mean(df[column])
-        median = np.median(df[column])
-        sd = np.std(df[column])
         dtype = df[column].dtype
-
-        print(f'name: {name}| mean: {mean:.2f}| med: {median:.2f}| sd: {sd:.2f}')
-
-        if dtype != 'float64' or min_value != 0 or max_value != 1:
-            extra_info = []
-            if dtype != 'float64':
-                extra_info.append(f'dtype: {dtype}')
-            if min_value != 0:
-                extra_info.append(f'min: {min_value:.2f}')
-            if max_value != 1:
-                extra_info.append(f'max: {max_value:.2f}')
-
-            print(' | '.join(extra_info))
+        
+        if np.issubdtype(dtype, np.number):
+            min_value = df[column].min()
+            max_value = df[column].max()
+            mean = np.mean(df[column])
+            median = np.median(df[column])
+            sd = np.std(df[column])
+            
+            print(f'name: {name}| dtype: {dtype}| min: {min_value}| mean: {mean:.2f}| med: {median:.2f}| sd: {sd:.2f}| max: {max_value}')
+        
+        else:
+            value_counts = df[column].value_counts()
+            top_value = value_counts.index[0]
+            num_top_value = value_counts.iloc[0]
+            num_unique = len(df[column].unique())
+            
+            print(f'name: {name}| dtype: {dtype}| top: {top_value}| count: {num_top_value}| unique: {num_unique}')
 
 def convert_columns_to_float64(df):
     for column in df.columns:
