@@ -1,11 +1,53 @@
 import pandas as pd
 import numpy as np
-from scipy.stats import spearmanr
 from sklearn.preprocessing import StandardScaler
 import category_encoders as ce
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
 
 # Universal variables
 data_folder = 'data'
+
+def fill_in_missing_values(df, debug=False):
+    if debug:
+        print("Prepare imputers for missing values...")
+
+    # Identify numerical and categorical columns
+    numerical_columns = df.select_dtypes(include='number').columns.tolist()
+    categorical_columns = df.select_dtypes(exclude='number').columns.tolist()
+
+    # Create an imputer for numerical columns that fills missing values with the mean of each column
+    numerical_imputer = SimpleImputer(strategy='mean')
+
+    # Create an imputer for categorical columns that fills missing values with the most frequent value of each column
+    categorical_imputer = SimpleImputer(strategy='most_frequent')
+
+    # Combine the numerical and categorical imputers using ColumnTransformer
+    if debug:
+        print("Fitting imputers for missing values...")
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', numerical_imputer, numerical_columns),
+            ('cat', categorical_imputer, categorical_columns)
+        ], remainder='passthrough')
+
+    # Fit the preprocessor on your dataset
+    df_imputed = preprocessor.fit_transform(df)
+
+    # Extract column names
+    column_names = numerical_columns + categorical_columns
+    if preprocessor.remainder == 'passthrough':
+        column_names += [x for x in df.columns if x not in column_names]
+
+    # Create a new DataFrame with the imputed data and original column names
+    df_imputed2 = pd.DataFrame(df_imputed, columns=column_names, index=df.index)
+
+    # If debug, print the head of the dataframe
+    if debug:
+        print("Imputing complete. Here's the head of the dataframe:")
+        print(df_imputed2.head())
+
+    return df_imputed2
 
 def identify_skewed_columns(df, threshold=0.5, debug=False):
     if debug:
