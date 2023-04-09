@@ -22,11 +22,6 @@ def pipeline1(debug=False):
         print('Preprocessing in progress...')
     train = run_preprocessing(train,"SalePrice",debug)
 
-    # Print out feature summaries
-    if debug:
-        print('Feature summaries:')
-    feature_summary(train)
-
     # Perform grid search of range of correlation thresholds
     if debug:
         print('Grid search in progress...')
@@ -176,42 +171,50 @@ def run_preprocessing(df, target_col, debug=False):
     # Fill in the missing values
     df = fill_in_missing_values(df, debug)
 
-    # Print the head of the dataframe
-    if debug:
-        print("Here's the head of the dataframe:")
-        print(df.head())
-        print('And the shape: {}'.format(df.shape))
-        sys.exit(0)
-
-    # Identify and target encode sparse categorical features
-    sparse_categorical_columns = identify_sparse_categorical_columns(df, threshold=0.9, debug=debug)  # Adjust threshold if needed
-    df = target_encode_features(df, target_col, sparse_categorical_columns, debug)
-
     # One-hot encode the remaining categorical features
-    df = one_hot_encode_non_sparse_categorical_features(df, sparse_categorical_columns, debug)
+    df = one_hot_encode_non_sparse_categorical_features(df, [], debug)
+    
+    # If debug, print the feature summary
+    if debug:
+        print("Here's the post-encoding feature summary:")
+        feature_summary(df)
 
     # Remove constant features
     df = remove_constant_features(df, debug)
 
     # Remove outliers from the dataset using the IQR method
-    df = remove_outliers_iqr(df, factor=3, debug=debug)
+    df = remove_outliers_iqr(df, factor=5, debug=debug)
 
-    # Identify and apply transformations to reduce skewness
-    skewed_columns = identify_skewed_columns(df, threshold=0.5, debug=debug)  # Adjust threshold if needed
-    df = apply_transformations(df, skewed_columns, debug)
+    # Print the head of the dataframe
+    if debug:
+        print("Here's the head of the dataframe:")
+        print(df.head())
+        print('And the shape: {}'.format(df.shape))
 
-    # Identify and standardize high variance features
+    # Identify high variance features & apply log transformation
     high_variance_columns = identify_high_variance_columns(df, threshold=1.0, debug=debug)  # Adjust threshold if needed
-    df = standardize_features(df, high_variance_columns, debug)
+    df = apply_transformations(df, high_variance_columns, transformation='log', debug=debug)
 
-    # Normalize the numerical features
-    df = normalize_numerical_features(df, target_col, debug)
+    # Print the head of the dataframe
+    if debug:
+        print("Here's the head of the dataframe:")
+        print(df.head())
+        print('And the shape: {}'.format(df.shape))
+
+    if debug:
+        feature_summary(df)
+
+    # Standardize all features
+    df = standardize_features(df, [x for x in list(df.columns) if x != target_col], debug)
 
     # Print the head of the dataframe
     if debug:
         print("Processing complete. Here's the head of the dataframe:")
         print(df.head())
         print('And the shape: {}'.format(df.shape))
+
+    if debug:
+        feature_summary(df)
 
     return df
 
@@ -247,6 +250,8 @@ def one_hot_encode_non_sparse_categorical_features(df, sparse_categorical_column
     
     # One-hot-encode remaining categorical features
     df_one_hot_encoded = pd.get_dummies(df[remaining_categorical_features])
+    for column_name in df_one_hot_encoded.columns:
+        df_one_hot_encoded[column_name] = df_one_hot_encoded[column_name].astype(float)
 
     # Drop original features
     df.drop(remaining_categorical_features, axis=1, inplace=True)
@@ -254,50 +259,10 @@ def one_hot_encode_non_sparse_categorical_features(df, sparse_categorical_column
     # Merge one-hot-encoded features with the rest of the data
     df = pd.concat([df, df_one_hot_encoded], axis=1)
 
+    df = convert_columns_to_float64(df)
+
     if debug:
         print('Count of columns after one-hot-encoding: {}'.format(len(df.columns)))
-
-    return df
-
-def remove_constant_features(df, debug=False):
-
-    # Find constant columns
-    if debug:
-        print("Removing constant features...")
-    constant_columns = []
-    for column in df.columns:
-        if df[column].nunique() == 1:
-            constant_columns.append(column)
-
-    # Drop the constant columns from the DataFrame
-    df_no_constants = df.drop(columns=constant_columns)
-    
-    return df_no_constants
-
-def normalize_numerical_features(df, target_col, debug=False):
-    if debug:
-        print("Normalizing numerical features...")
-
-    # Convert object columns to numeric
-    df = convert_columns_to_float64(df)
-
-    # Iterate over all columns in the DataFrame and normalize numerical features
-    for column in [x for x in df.columns.tolist() if x != target_col]:
-        # Check if the column contains numerical data
-        if df[column].dtype in ['float64']:
-            min_value = df[column].min()
-            max_value = df[column].max()
-
-            # Check if the values are not in the range [0, 1]
-            if not ((min_value == 0) and (max_value == 1)):
-                # Apply normalization using Min-Max scaling
-                if max_value != min_value:
-                    df[column] = (df[column] - min_value) / (max_value - min_value)
-                else:
-                    df[column] = 0
-
-    # Convert object columns to numeric
-    df = convert_columns_to_float64(df)
 
     return df
 
