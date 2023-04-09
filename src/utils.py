@@ -71,6 +71,23 @@ def fill_in_missing_values(df, debug=False):
 
     return df_final
 
+def remove_constant_features(df, debug=False):
+
+    # Find constant columns
+    if debug:
+        print("Removing constant features...")
+    constant_columns = []
+    for column in df.columns:
+        if df[column].nunique() == 1:
+            constant_columns.append(column)
+
+    # Drop the constant columns from the DataFrame
+    df_no_constants = df.drop(columns=constant_columns)
+
+    if debug:
+        print(f"Shape of dataframe after removing constant columns: {df_no_constants.shape}")
+    
+    return df_no_constants
 
 def identify_skewed_columns(df, threshold=0.5, debug=False):
     if debug:
@@ -116,14 +133,41 @@ def target_encode_features(df, target_col, columns, debug=False):
 
 def standardize_features(df, columns, debug=False):
     if debug:
-        print(f"Standardizing {', '.join(columns)}")
+        print("Standardizing {}/{} columns".format(len(columns),len(df.columns)))
     scaler = StandardScaler()
     df[columns] = scaler.fit_transform(df[columns])
     return df
 
+def normalize_numerical_features(df, target_col, debug=False):
+    if debug:
+        print("Normalizing numerical features...")
+
+    # Convert object columns to numeric
+    df = convert_columns_to_float64(df)
+
+    # Iterate over all columns in the DataFrame and normalize numerical features
+    for column in [x for x in df.columns.tolist() if x != target_col]:
+        # Check if the column contains numerical data
+        if df[column].dtype in ['float64']:
+            min_value = df[column].min()
+            max_value = df[column].max()
+
+            # Check if the values are not in the range [0, 1]
+            if not ((min_value == 0) and (max_value == 1)):
+                # Apply normalization using Min-Max scaling
+                if max_value != min_value:
+                    df[column] = (df[column] - min_value) / (max_value - min_value)
+                else:
+                    df[column] = 0
+
+    # Convert object columns to numeric
+    df = convert_columns_to_float64(df)
+
+    return df
+
 def apply_transformations(df, columns, transformation='log', debug=False):
     if debug:
-        print(f"Applying {transformation} transformation to {', '.join(columns)}")
+        print("Applying transformations to {}/{} columns".format(len(columns),len(df.columns)))
     for column in columns:
         if transformation == 'log':
             df[column] = np.log1p(df[column])
@@ -160,6 +204,7 @@ def remove_outliers_iqr(df, factor=1.5, debug=False):
             if num_outliers_col > 0:
                 print(f"  - {col}: {num_outliers_col} outliers (below {lower_bound[col]:.2f} or above {upper_bound[col]:.2f})")
 
+        print("The shape of the dataframe is now: {}".format(df_filtered.shape))
     return df_filtered
 
 def find_highly_correlated_features(df, target_col, threshold=0.7, debug=False):
@@ -227,13 +272,13 @@ def feature_summary(df):
         dtype = df[column].dtype
         
         if np.issubdtype(dtype, np.number):
-            min_value = df[column].min()
-            max_value = df[column].max()
-            mean = np.mean(df[column])
-            median = np.median(df[column])
-            sd = np.std(df[column])
+            min_value = round(df[column].min(),2)
+            max_value = round(df[column].max(),2)
+            mean = round(np.mean(df[column]),2)
+            median = round(np.median(df[column]),2)
+            sd = round(np.std(df[column]),2)
             
-            print(f'name: {name}| dtype: {dtype}| min: {min_value}| mean: {mean:.2f}| med: {median:.2f}| sd: {sd:.2f}| max: {max_value}')
+            print(f'name: {name}| min: {min_value}| mean: {mean:.2f}| med: {median:.2f}| sd: {sd:.2f}| max: {max_value}')
         
         else:
             value_counts = df[column].value_counts()
