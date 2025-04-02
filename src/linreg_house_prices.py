@@ -8,7 +8,7 @@ from sklearn.preprocessing import OneHotEncoder
 
 from src.utils import *
 
-def pipeline1(debug=False):
+def house_price_pipeline(debug=False):
     
     # Read in relevant data
     train = pd.read_csv('data/house-prices/train.csv')

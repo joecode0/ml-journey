@@ -7,8 +7,8 @@ warnings.simplefilter(action='ignore', category=PerformanceWarning)
 ## Main driver function
 def main(args):
     if args[0] == '1':
-        from src.challenge1_linreg_house_prices import pipeline1
-        pipeline1(args[1])
+        from linreg_house_prices import house_price_pipeline
+        house_price_pipeline(args[1])
     
     return
 
